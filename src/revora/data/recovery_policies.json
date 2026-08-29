@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "description": "Small curated recovery policy knowledge base. Deterministic lookup by failure category. Not embeddings, not RAG.",
+  "policies": [
+    {
+      "id": "transient_network",
+      "failure_categories": ["TRANSIENT_NETWORK"],
+      "payment_methods": null,
+      "candidate_actions": ["RETRY_LATER", "ALTERNATIVE_PATH"],
+      "max_retries": 3,
+      "cooldown_hours": 1,
+      "stop_after_recovery_attempts": 4,
+      "rationale": "Gateway/network faults are often short-lived; a delayed retry is first-line, with an alternate rail if retries fail."
+    },
+    {
+      "id": "insufficient_funds",
+      "failure_categories": ["INSUFFICIENT_FUNDS"],
+      "payment_methods": null,
+      "candidate_actions": ["RECOVERY_NUDGE", "RETRY_LATER"],
+      "max_retries": 2,
+      "cooldown_hours": 24,
+      "stop_after_recovery_attempts": 3,
+      "rationale": "Immediate retries rarely help when the account is empty; a delayed nudge after expected replenishment is preferred."
+    },
+    {
+      "id": "expired_or_invalid_method",
+      "failure_categories": ["EXPIRED_PAYMENT_METHOD"],
+      "payment_methods": null,
+      "candidate_actions": ["PAYMENT_METHOD_UPDATE", "ALTERNATIVE_PATH"],
+      "max_retries": 1,
+      "cooldown_hours": 0,
+      "stop_after_recovery_attempts": 2,
+      "rationale": "Retrying the same expired or revoked instrument cannot succeed; the customer must update the method or use another path."
+    },
+    {
+      "id": "authentication_failure",
+      "failure_categories": ["AUTHENTICATION_FAILURE"],
+      "payment_methods": null,
+      "candidate_actions": ["ALTERNATIVE_PATH", "PAYMENT_METHOD_UPDATE"],
+      "max_retries": 2,
+      "cooldown_hours": 2,
+      "stop_after_recovery_attempts": 3,
+      "rationale": "Repeated 3DS/UPI PIN on the same rail often fails again; offer another path or a different instrument."
+    },
+    {
+      "id": "repeated_failure",
+      "failure_categories": ["REPEATED_FAILURE"],
+      "payment_methods": null,
+      "candidate_actions": ["STOP_AND_ESCALATE", "ALTERNATIVE_PATH"],
+      "max_retries": 0,
+      "cooldown_hours": 0,
+      "stop_after_recovery_attempts": 1,
+      "rationale": "The payment has already failed many times; automated retries add cost and customer friction."
+    },
+    {
+      "id": "unknown_failure",
+      "failure_categories": ["UNKNOWN"],
+      "payment_methods": null,
+      "candidate_actions": ["RECOVERY_NUDGE", "STOP_AND_ESCALATE"],
+      "max_retries": 1,
+      "cooldown_hours": 12,
+      "stop_after_recovery_attempts": 2,
+      "rationale": "Unknown issuer declines are treated conservatively: at most one low-intensity nudge, then stop."
+    }
+  ]
+}
