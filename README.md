@@ -159,12 +159,40 @@ Computed from audit logs and verified states (never invented):
 - unnecessary interventions, average recovery attempts
 - policy violations, duplicate actions, verification failures
 
+## Held-out Evaluation (seed=42, n=400, 76 payments, ₹744,567.53 at risk)
+
+| System              | Recovery Rate | Revenue Recovered | Unnecessary Interventions |
+|---------------------|---------------|--------------------|-----------------------------|
+| Simple Retry        | 25.00%        | ₹182,181           | 55                          |
+| Static Rules        | 36.84%        | ₹322,872           | 47                          |
+| Revora v1 (pooled)  | 32.89%        | ₹213,275           | 43                          |
+| Revora C2 (policy)  | 43.42%        | ₹319,967           | 60                          |
+| C2 + Heuristic      | 42.11%        | ₹319,768           | 44                          |
+| C2 + Frozen AI      | 40.79%        | ₹319,769           | 43                          |
+
 ## Design choices
 
 - One Python package, no microservices.
 - Amounts are integer **paise**; reports print INR.
 - Idempotency key = webhook `event_id`; processed IDs are stored on the simulated payment.
 - Follow-up recovery cycles use **new** event IDs (retry scheduler), not duplicate webhooks.
+
+## What Broke During Development
+
+Revora v1 pooled all prior recovery attempts into a single counter
+(`previous_recovery_attempts + attempts_this_run`). This meant history
+from one recovery mechanism (e.g. RETRY_LATER) incorrectly exhausted
+eligibility for a completely different mechanism (e.g.
+PAYMENT_METHOD_UPDATE) — even though that mechanism had never actually
+been tried.
+
+This was caught by the held-out evaluation itself: EXPIRED_PAYMENT_METHOD
+recovery dropped from Static Rules' 60% to v1's 7%, despite v1 having
+strictly more safety logic. Investigating that regression led to C2:
+a mechanism-aware ledger that tracks attempts per action family instead
+of one pooled counter. C2 alone recovered EXPIRED_PAYMENT_METHOD at 53%
+— a ₹106,692 improvement over v1 on the same held-out set — and is a
+policy/state-tracking fix, not an AI improvement.
 
 ## Ranking impact (not a revenue claim)
 
@@ -181,5 +209,4 @@ Frozen held-out evaluation (seed=42, n=400, 76 payments). C2 policy arm vs ranki
 This is an **intervention-precision** result. It is **not** a claim that AI or the heuristic improves recovered revenue. On this cohort, C2 remains slightly ahead of both ranking arms on revenue (C2 ₹319,967 vs ranking ₹319,768–₹319,769). Static Rules remains highest on revenue (₹322,872).
 
 ## License
-
-Private / hackathon use unless you add a license later.
+Submitted for Razorpay AI Buildathon 2026. No formal license applied yet.
